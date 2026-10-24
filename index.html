@@ -466,6 +466,52 @@
       letter-spacing: 0;
     }
 
+    .review-summary {
+      margin-top: 32px;
+      text-align: left;
+    }
+
+    .review-summary h2 {
+      margin: 0 0 16px;
+      font-size: 22px;
+    }
+
+    .review-list {
+      display: grid;
+      gap: 14px;
+      margin: 0;
+      padding-left: 26px;
+    }
+
+    .review-item {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--surface-soft);
+    }
+
+    .review-item:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .review-item h3 {
+      margin: 0 0 12px;
+      font-size: 16px;
+      line-height: 1.4;
+    }
+
+    .review-item p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .review-choice { font-weight: 700; }
+    .review-choice.is-correct { color: var(--good); }
+    .review-choice.is-wrong { color: var(--bad); }
+
     .hidden { display: none !important; }
 
     .footer-note {
@@ -558,12 +604,16 @@
       </div>
     </section>
 
-    <section class="card result hidden" id="result" aria-live="polite">
+    <section class="card result hidden" id="result" aria-labelledby="result-title">
       <div class="result-emoji" id="result-emoji" aria-hidden="true"></div>
       <p class="eyebrow">Misión completada</p>
       <h1 id="result-title">¡Buen viaje!</h1>
       <p class="result-copy" id="result-copy"></p>
       <div class="result-score"><span id="final-score">0</span><small>/ 10 aciertos</small></div>
+      <section class="review-summary" aria-labelledby="review-title">
+        <h2 id="review-title" tabindex="-1">Repaso de la misión</h2>
+        <ol class="review-list" id="review-list"></ol>
+      </section>
       <div><button class="primary" id="restart-button" type="button">Volver a jugar <span aria-hidden="true">↻</span></button></div>
     </section>
 
@@ -657,10 +707,13 @@
     const feedback = document.querySelector("#feedback");
     const nextButton = document.querySelector("#next-button");
     const footerNote = document.querySelector("#footer-note");
+    const reviewList = document.querySelector("#review-list");
+    const reviewTitle = document.querySelector("#review-title");
 
     let currentIndex = 0;
     let score = 0;
     let answered = false;
+    let selectedAnswers = [];
 
     function renderQuestion() {
       const item = questions[currentIndex];
@@ -696,6 +749,7 @@
       if (answered) return;
       answered = true;
       const item = questions[currentIndex];
+      selectedAnswers[currentIndex] = selectedIndex;
       const buttons = [...answersContainer.querySelectorAll(".answer")];
       buttons.forEach(button => { button.disabled = true; });
 
@@ -717,10 +771,39 @@
       nextButton.classList.remove("hidden");
     }
 
+    function renderReview() {
+      reviewList.replaceChildren();
+
+      questions.forEach((item, index) => {
+        const selectedIndex = selectedAnswers[index];
+        const reviewItem = document.createElement("li");
+        reviewItem.className = "review-item";
+        reviewItem.tabIndex = 0;
+
+        const questionHeading = document.createElement("h3");
+        questionHeading.textContent = item.question;
+
+        const selectedAnswer = document.createElement("p");
+        const isCorrect = selectedIndex === item.correct;
+        selectedAnswer.className = `review-choice ${isCorrect ? "is-correct" : "is-wrong"}`;
+        selectedAnswer.textContent = `Tu respuesta: ${item.answers[selectedIndex]} (${isCorrect ? "Correcta" : "Incorrecta"})`;
+
+        const correctAnswer = document.createElement("p");
+        correctAnswer.textContent = `Respuesta correcta: ${item.answers[item.correct]}`;
+
+        const fact = document.createElement("p");
+        fact.textContent = `Dato: ${item.fact}`;
+
+        reviewItem.append(questionHeading, selectedAnswer, correctAnswer, fact);
+        reviewList.append(reviewItem);
+      });
+    }
+
     function showResults() {
       quiz.classList.add("hidden");
       result.classList.remove("hidden");
       footerNote.classList.add("hidden");
+      renderReview();
       document.querySelector("#final-score").textContent = score;
       const reaction = score === 10
         ? ["🏆", "¡Explorador/a legendario/a!", "¡Perfecto! Tienes el universo al alcance de la mano."]
@@ -732,10 +815,13 @@
       document.querySelector("#result-emoji").textContent = reaction[0];
       document.querySelector("#result-title").textContent = reaction[1];
       document.querySelector("#result-copy").textContent = reaction[2];
-      document.querySelector("#restart-button").focus();
+      reviewTitle.focus();
     }
 
     document.querySelector("#start-button").addEventListener("click", () => {
+      currentIndex = 0;
+      score = 0;
+      selectedAnswers = [];
       intro.classList.add("hidden");
       quiz.classList.remove("hidden");
       footerNote.classList.remove("hidden");
